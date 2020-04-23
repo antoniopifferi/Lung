@@ -40,15 +40,21 @@ Data.rename(columns=dcKey,inplace=True)
 # FILT DATA
 
 # PLOT TYPE1
+Color=['red','blue']
+Linestyle=['-','--']
 if PLOT_TYPE1:
-    for id in Data.Detector.unique():
-        for iss in Data[Data.Detector==id].Subject.unique():
-            fig=figure(figsize=cm2inch(40, 15))
-            table=Data[(Data.Detector==id)&(Data.Subject==iss)].pivot_table(Opt,index='Time',columns=['Protocol'],aggfunc='mean')
-            for io in Opt:
-                fig.add_subplot(1,len(Opt),1+Opt.index(io))
-                plot(table[io])
-                legend(table[io]), xlabel(XLABEL), ylabel(YLABEL[io])
-                title('det='+id+' - subj='+iss+' - opt='+io)
-                grid(True)
-    show()
+    for od in Data.Detector.unique():
+        for os in Data[Data.Detector==od].Subject.unique():
+            for ol in Data[(Data.Detector==od)&(Data.Subject==os)].Position.unique():
+                fig=figure(figsize=cm2inch(40, 15))
+                for ip,op in enumerate(Data.Protocol.unique()):
+                    ax=fig.add_subplot(1,len(Data.Protocol.unique()),1+ip)
+                    for io,oo in enumerate(Opt):
+                        table=Data[(Data.Detector==od)&(Data.Subject==os)&(Data.Protocol==op)&(Data.Position==ol)].pivot_table(Opt,index='Time',columns='Repetition',aggfunc='mean')
+                        table[oo].plot(ax=ax,secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+                        ylabel(YLABEL[oo],color=Color[io])
+                        grid(True)
+                    xlabel(XLABEL)
+                    title('det='+od+' - subj='+os+' - pos='+ol)
+                fig.tight_layout()
+                show()    
