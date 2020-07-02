@@ -40,7 +40,7 @@ Data.rename(columns=dcKey,inplace=True)
 # FILT DATA
 
 # PLOT TYPE1
-Color=['green','blue']
+Color=['purple','blue']
 Linestyle=['-','--']
 if PLOT_TYPE1:
     for od in Data.Detector.unique():
