@@ -17,7 +17,7 @@ YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
 XLABEL='time (s)'
 
 # PARAMETERS
-PathAnalysis='E:\\Beta\\Analysis\\Polmone\\FIT\\'
+PathAnalysis='C:\\OneDrivePolimi\\OneDrive - Politecnico di Milano\\Beta\\Analysis\\Polmone\\FIT\\'
 FileData='POLm0080new.txt'
 FileKey='keyPOLm0080.txt'
 
