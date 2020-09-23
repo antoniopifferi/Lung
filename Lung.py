@@ -11,7 +11,8 @@ from pandas import *
 close('all')
 
 # OPTIONS
-PLOT_TYPE1=True
+PLOT_TYPE1=False
+PLOT_TYPE2=True
 Opt=['Mua','Mus']
 YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
 XLABEL='time (s)'
@@ -20,6 +21,12 @@ XLABEL='time (s)'
 PathAnalysis='C:\\OneDrivePolimi\\OneDrive - Politecnico di Milano\\Beta\\Analysis\\Polmone\\FIT\\'
 FileData='POLm0080new.txt'
 FileKey='keyPOLm0080.txt'
+PROT10=1
+PROT5=2
+PROT10_PERIOD=10
+PROT10_BASE=10
+PROT5_PERIOD=5
+
 
 # CONVERSION FUNCTION
 def cm2inch(*tupl):
@@ -39,8 +46,12 @@ Data.rename(columns=dcKey,inplace=True)
 
 # FILT DATA
 
+# FOLDING AVERAGE
+Data['RefTime']=0
+Data.RefTime=(Data.Time)%Data.NumClock
+
 # PLOT TYPE1
-Color=['purple','blue']
+Color=['red','blue']
 Linestyle=['-','--']
 if PLOT_TYPE1:
     for od in Data.Detector.unique():
@@ -58,3 +69,23 @@ if PLOT_TYPE1:
                 grid(True)
             fig.tight_layout()
             show()    
+            
+# PLOT TYPE2
+Color=['purple','blue']
+Linestyle=['-','--']
+if PLOT_TYPE2:
+    for od in Data.Detector.unique():
+        for os in Data[Data.Detector==od].Subject.unique():
+            fig=figure(figsize=cm2inch(40, 15))
+            protocol=Data.Protocol.unique()
+            for ip,op in enumerate(protocol):
+                ax=fig.add_subplot(1,len(protocol),1+ip)
+                for io,oo in enumerate(Opt):
+                    table=Data[(Data.Detector==od)&(Data.Subject==os)&(Data.Protocol==op)].pivot_table(Opt,index='RefTime',aggfunc='mean')
+                    table[oo].plot(ax=ax,secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+                    ylabel(YLABEL[oo],color=Color[io])
+                xlabel(XLABEL)
+                title('det='+od+' - subj='+os)
+                grid(True)
+            fig.tight_layout()
+            show()
