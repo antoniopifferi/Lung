@@ -14,7 +14,10 @@ PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
 Opt=['Mua','Mus']
-Gates=['DeltaGateNorm2','DeltaGateNorm4','DeltaGateNorm6','DeltaGateNorm8']
+Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08']
+sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
+sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10','MeanGateOut11','MeanGateOut12','MeanGateOut13','MeanGateOut14','MeanGateOut15']
+sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
 YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
 XLABEL='time (s)'
 
@@ -32,13 +35,15 @@ PROT10_BASE=10
 PROT5_PERIOD=5
 NUMGATE=16
 WIDTHGATE=500 # ps
-MINREF=1 # used to avoid divide by zero (could be set higher)
+MINREF=100 # used to avoid divide by zero (could be set higher)
 InClock=[]
 OutClock=[]
 InClock.insert(PROT10,range(2,5))
 InClock.insert(PROT5,range(3,10))
 OutClock.insert(PROT10,range(7,10))
 OutClock.insert(PROT5,range(13,20))
+Prot=PROT5
+REFOLDING=False
 
 # CONSTANTS
 NUMCHAN=4096
@@ -70,9 +75,20 @@ Data.rename(columns=dcKey,inplace=True)
 
 # CREATES COL-FIELDS INITIALISED TO 0
 for ig in arange(NUMGATE):
-    Data['DeltaGateNorm'+str(ig)]=0
+    Data['DeltaGateNorm'+str(ig).zfill(2)]=0
 # DELETE???
     
+# # CREATES COL-FIELDS FOR MEAN GATES
+# sMeanGateIn=[]
+# sMeanGateOut=[]
+# sMeanGateDiff=[]
+
+# for ig in arange(NUMGATE):
+#     sMeanGateIn.append(['MeanGateIn'+str(ig)])
+#     sMeanGateOut.append(['MeanGateOut'+str(ig)])
+#     sMeanGateDiff.append(['MeanGateDiff'+str(ig)])
+# sMeanGateIn=tuple(sMeanGateIn)
+
 # LOAD RAW DATA AND PROCESS THEM TO POPULATE DataFrame
 for od in Data.Data.unique():
     item=Data[Data.Data==od].iloc[0,:]
@@ -118,27 +134,33 @@ for od in Data.Data.unique():
         
     # Calc NormGate/Ref
     for ir in arange(item.NumRep):
-        Ref=sum(Gate[ir,:,:],axis=0) # nore: Gate here is 2D since ir reduce dimensions
+        Ref=mean(Gate[ir,:,:],axis=0) # nore: Gate here is 2D since ir reduce dimensions
         Ref[Ref<MINREF]=0
         for ik in arange(item.NumClock):
-            DeltaGateNorm[ir,ik,:]=-log(Gate[ir,ik,:]/Ref)
+            DeltaGateNorm[ir,ik,:]=nan_to_num(-log(Gate[ir,ik,:]/Ref))
     for ig in arange(NUMGATE):    
-        Data.loc[Data.Data==od,'DeltaGateNorm'+str(ig)]=DeltaGateNorm[:,:,ig].flatten()    
+        Data.loc[Data.Data==od,'DeltaGateNorm'+str(ig).zfill(2)]=DeltaGateNorm[:,:,ig].flatten()    
         
     # Calc MeanGate
-    MeanGateIn=mean(mean(DeltaGateNorm[item.FirstRep-1:,InClock[item.Protocol-1],:],axis=1))
-    #MeanGateOut=squeeze(mean(mean(DeltaGateNorm[FirstRep:end,OutClock,:],axis=1)))
-    #MeanGateDiff=MeanGateOut-MeanGateIn
+    MeanGateIn=mean(mean(DeltaGateNorm[item.FirstRep-1:,InClock[item.Protocol-1],:],axis=1),axis=0)
+    MeanGateOut=mean(mean(DeltaGateNorm[item.FirstRep-1:,OutClock[item.Protocol-1],:],axis=1),axis=0)
+    MeanGateDiff=MeanGateOut-MeanGateIn
     #DeltaMuaClock=squeeze(mean(DeltaMua(FirstRep:end,:,:),1));
-
-    
+    for ig in arange(NUMGATE):    
+        Data.loc[Data.Data==od,'MeanGateIn'+str(ig).zfill(2)]=MeanGateIn[ig]    
+        Data.loc[Data.Data==od,'MeanGateOut'+str(ig).zfill(2)]=MeanGateOut[ig]    
+        Data.loc[Data.Data==od,'MeanGateDiff'+str(ig).zfill(2)]=MeanGateDiff[ig]    
 
 # FILT DATA
+Data.replace([inf, -inf, nan], 0)
 
 
 # FOLDING AVERAGE
 Data['RefTime']=0
-Data.RefTime=(Data.Time)%Data.NumClock
+if REFOLDING:
+    Data.RefTime=(Data.Time)%Data.NumClock
+else:
+    Data.RefTime=Data.Time
 
 # PLOT TYPE1
 Color=['red','blue']
@@ -184,9 +206,10 @@ if PLOT_TYPE2:
 Color=['purple','blue']
 Linestyle=['-','--']
 if PLOT_TYPE3:
-    pData=Data[(Data.Detector=='HYBD')&(Data.Protocol==PROT10)]
+    pData=Data[(Data.Detector=='HYBD')&(Data.Protocol==Prot)]
     figOpt=figure(figsize=cm2inch(50,20))
     figGate=figure(figsize=cm2inch(50,20))
+    figMean=figure(figsize=cm2inch(50,20))
     position=pData.Position.unique()
     subject=pData.Subject.unique()
     for ip,op in enumerate(position):
@@ -194,24 +217,46 @@ if PLOT_TYPE3:
             
             # plot Opt
             axOpt=figOpt.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
+            sca(axOpt)
             for io,oo in enumerate(Opt):
                 table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
                 table[oo].plot(ax=axOpt,secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
                 ylabel(YLABEL[oo],color=Color[io])
-            sca(axOpt)
             xlabel(XLABEL)
             title('pos='+op+' - subj='+os)
             grid(True)
             
             # plot Gate
             axGate=figGate.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
+            sca(axGate)
             table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Gates,index='RefTime',aggfunc='mean')
             table.plot(ax=axGate)
-            sca(axGate)
             xlabel(XLABEL)
+            ylabel('log ratio to REF')
             title('pos='+op+' - subj='+os)
             grid(True)
 
+            # plot Mean
+            axMean=figMean.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
+            sca(axMean)
+            temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateIn,index='Detector',aggfunc='mean')
+            mgIn=temp.to_numpy().transpose()
+            temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateOut,index='Detector',aggfunc='mean')
+            mgOut=temp.to_numpy().transpose()
+            temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateDiff,index='Detector',aggfunc='mean')
+            # mgDiff=temp.to_numpy().transpose()
+            mgDiff=mgOut-mgIn
+            # A=column_stack(mgIn,mgOut,mgDiff)
+            plot(TimeGate,mgIn,label='IN')
+            plot(TimeGate,mgOut,label='OUT')
+            plot(TimeGate,mgDiff,label='OUT-IN')
+            legend()
+            xlabel('time gate (ps)')
+            ylabel('log ratio to REF')
+            title('pos='+op+' - subj='+os)
+            grid(True)
+            
     figOpt.tight_layout()
     figGate.tight_layout()
+    figMean.tight_layout()
     show()
