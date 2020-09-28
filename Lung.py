@@ -5,14 +5,16 @@ Created on Mon Apr 20 11:56:40 2020
 @author: anton
 """
 from numpy import *
-from scipy import *
+#from scipy import *
 from matplotlib.pyplot import *
 from pandas import *
 
 # OPTIONS
-PLOT_TYPE1=False
-PLOT_TYPE2=False
+PLOT_TYPE1=False # only Mua
+PLOT_TYPE2=False # only Mua folding average
+PLOT_TYPE3=True # all param
 Opt=['Mua','Mus']
+Gates=['DeltaGateNorm2','DeltaGateNorm4','DeltaGateNorm6','DeltaGateNorm8']
 YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
 XLABEL='time (s)'
 
@@ -21,7 +23,7 @@ PATHBETA='C:\\OneDrivePolimi\\OneDrive - Politecnico di Milano\\Beta\\'
 PATHDATA='Data\\Polmone\\'
 PATHANALYSIS='Analysis\\Polmone\\FIT\\'
 EXTDATA='.dat'
-FILEFIT='POLm0080new.txt'
+FILEFIT='POLm0080new2.txt'
 FILEKEY='keyPOLm0080.txt'
 PROT10=1
 PROT5=2
@@ -30,7 +32,13 @@ PROT10_BASE=10
 PROT5_PERIOD=5
 NUMGATE=16
 WIDTHGATE=500 # ps
-
+MINREF=1 # used to avoid divide by zero (could be set higher)
+InClock=[]
+OutClock=[]
+InClock.insert(PROT10,range(2,5))
+InClock.insert(PROT5,range(3,10))
+OutClock.insert(PROT10,range(7,10))
+OutClock.insert(PROT5,range(13,20))
 
 # CONSTANTS
 NUMCHAN=4096
@@ -60,11 +68,20 @@ dcKey=dict(zip(dataKey.Key, dataKey.Value))
 Data=read_csv(PATHBETA+PATHANALYSIS+FILEFIT,sep='\t')
 Data.rename(columns=dcKey,inplace=True)
 
-# LOAD RAW DATA FOR GATE
+# CREATES COL-FIELDS INITIALISED TO 0
 for ig in arange(NUMGATE):
-    Data['Gate'+str(ig)]=0
+    Data['DeltaGateNorm'+str(ig)]=0
+# DELETE???
+    
+# LOAD RAW DATA AND PROCESS THEM TO POPULATE DataFrame
 for od in Data.Data.unique():
     item=Data[Data.Data==od].iloc[0,:]
+    
+    # Allocate memory
+    Dtof=zeros([item.NumRep,item.NumClock,NUMCHAN]) # DTOF for this file
+    Gate=zeros([item.NumRep,item.NumClock,NUMGATE]) # GATES for this file
+    DeltaGateNorm=zeros([item.NumRep,item.NumClock,NUMGATE]) # GATES normalised to REF(=mean over all instants) for this file
+    MeanGateIn=zeros([NUMGATE]) # GATES averaged for all IN instants for this file
     
     # load system
     fid = open(PATHBETA+PATHDATA+item.Syst+EXTDATA,'rb')
@@ -74,7 +91,6 @@ for od in Data.Data.unique():
     fid.close()
     
     # load data
-    Dtof=zeros([item.NumRep,item.NumClock,NUMCHAN])
     fid = open(PATHBETA+PATHDATA+item.Data+EXTDATA,'rb')
     fid.seek(HEADLEN,0) # 0=beginning
     for ir in arange(item.NumRep):
@@ -93,79 +109,32 @@ for od in Data.Data.unique():
 # DataClock=squeeze(mean(Data(FirstRep:end,:,:),1));
 
     # Calc gate
-    Gate=zeros([item.NumRep,item.NumClock,NUMGATE])
     StopGate=(Chan0+arange(NUMGATE)*(WIDTHGATE/ch2ps)).astype(int)
     StartGate=StopGate[arange(NUMGATE)-1]+1 # stop ends exacly before the start
     StartGate=insert(StartGate,0,Chan0) # add first gate;
+    TimeGate=arange(NUMGATE)*WIDTHGATE
     for ig in arange(NUMGATE):
         Gate[:,:,ig]=sum(Dtof[:,:,StartGate[ig]:StopGate[ig]],axis=2)
         
-    Data[Data.Data==od].Gate0=Gate[:,:,0].flatten()
+    # Calc NormGate/Ref
+    for ir in arange(item.NumRep):
+        Ref=sum(Gate[ir,:,:],axis=0) # nore: Gate here is 2D since ir reduce dimensions
+        Ref[Ref<MINREF]=0
+        for ik in arange(item.NumClock):
+            DeltaGateNorm[ir,ik,:]=-log(Gate[ir,ik,:]/Ref)
+    for ig in arange(NUMGATE):    
+        Data.loc[Data.Data==od,'DeltaGateNorm'+str(ig)]=DeltaGateNorm[:,:,ig].flatten()    
         
-# TimeGate=(0:NumGate-1)*WidthGate;
-# for ir=1:NumRep,
-#     Ref=mean(Gate(ir,:,:),2);
-#     Ref(Ref<MINREF)=0;
-#     for ik=1:NumClock,
-#         DeltaMua(ir,ik,:)=-log(Gate(ir,ik,:)./Ref);
-#         %if(Ref<1) DeltaMua(ir,ik,:)=0; end
-#     end
-# end
-
-# %bad=abs(DeltaMua)>1;
-# %DeltaMua=DeltaMua.*(1-bad);
-
-# for ig=1:NumGate,
-#     temp=(squeeze(DeltaMua(:,:,ig)))';
-#     MuaTimeLab(:,ig)=temp(:);
-# end
-# TimeLab=(1:NumRep*NumClock)*1;
-
-# % plot time course
-# for ig=1:NumGate,
-#     subplot(4,4,ig);
-#     plot(TimeLab,squeeze(MuaTimeLab(:,ig)));
-#     xlabel('laboratory time (s)'), ylabel('Delta Mua * l');
-#     title([num2str(ig*WidthGate) ' ps']);
-#     ax = gca; ax.XTick=[0:NumClock:NumClock*NumRep]; grid on;
-# end
-
-# suptitle(LabelMeas);
-
- 
-# % PLOT MUA vs GATE
-
-# figure('Name','PLOT MUA vs GATE','Position',[0 0 scrsz(3) 0.83*scrsz(4)]);
-
-
-# % calculate
-# DeltaMuaIn=squeeze(mean(mean(DeltaMua(FirstRep:end,InClock,:),2),1));
-# DeltaMuaOut=squeeze(mean(mean(DeltaMua(FirstRep:end,OutClock,:),2),1));
-# DeltaMuaOutIn=DeltaMuaOut-DeltaMuaIn;
-# DeltaMuaClock=squeeze(mean(DeltaMua(FirstRep:end,:,:),1));
-
-# % plot mean phase
-# subplot(1,2,1);
-# plot(TimeGate,[DeltaMuaIn DeltaMuaOut DeltaMuaOutIn]);
-# legend('IN','OUT', 'OUT/IN'), xlabel('time (ps)'), ylabel('Delta Mua * l'), xlim([TNEG,TPOS]);
-# title('mean Phase');
-
-# % plot mean clock
-# subplot(1,2,2);
-# plot(TimeGate,DeltaMuaClock);
-# legend(num2str((1:NumClock)')), xlabel('time (ps)'), ylabel('Delta Mua * l'), xlim([TNEG,TPOS]);
-# title('mean Clock');
-
-# suptitle(LabelMeas);
-
-
-# %% END CYCLE
-# %close all;
-# end
+    # Calc MeanGate
+    MeanGateIn=mean(mean(DeltaGateNorm[item.FirstRep-1:,InClock[item.Protocol-1],:],axis=1))
+    #MeanGateOut=squeeze(mean(mean(DeltaGateNorm[FirstRep:end,OutClock,:],axis=1)))
+    #MeanGateDiff=MeanGateOut-MeanGateIn
+    #DeltaMuaClock=squeeze(mean(DeltaMua(FirstRep:end,:,:),1));
 
     
 
 # FILT DATA
+
 
 # FOLDING AVERAGE
 Data['RefTime']=0
@@ -210,3 +179,39 @@ if PLOT_TYPE2:
                 grid(True)
             fig.tight_layout()
             show()
+            
+# PLOT TYPE3
+Color=['purple','blue']
+Linestyle=['-','--']
+if PLOT_TYPE3:
+    pData=Data[(Data.Detector=='HYBD')&(Data.Protocol==PROT10)]
+    figOpt=figure(figsize=cm2inch(50,20))
+    figGate=figure(figsize=cm2inch(50,20))
+    position=pData.Position.unique()
+    subject=pData.Subject.unique()
+    for ip,op in enumerate(position):
+        for iss,os in enumerate(subject):
+            
+            # plot Opt
+            axOpt=figOpt.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
+            for io,oo in enumerate(Opt):
+                table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
+                table[oo].plot(ax=axOpt,secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+                ylabel(YLABEL[oo],color=Color[io])
+            sca(axOpt)
+            xlabel(XLABEL)
+            title('pos='+op+' - subj='+os)
+            grid(True)
+            
+            # plot Gate
+            axGate=figGate.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
+            table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Gates,index='RefTime',aggfunc='mean')
+            table.plot(ax=axGate)
+            sca(axGate)
+            xlabel(XLABEL)
+            title('pos='+op+' - subj='+os)
+            grid(True)
+
+    figOpt.tight_layout()
+    figGate.tight_layout()
+    show()
