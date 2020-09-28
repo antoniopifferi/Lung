@@ -42,7 +42,7 @@ InClock.insert(PROT10,range(2,5))
 InClock.insert(PROT5,range(3,10))
 OutClock.insert(PROT10,range(7,10))
 OutClock.insert(PROT5,range(13,20))
-Prot=PROT5
+Prot=PROT10
 REFOLDING=False
 
 # CONSTANTS
@@ -161,6 +161,9 @@ if REFOLDING:
     Data.RefTime=(Data.Time)%Data.NumClock
 else:
     Data.RefTime=Data.Time
+
+for i in range(20):
+    print('\n')
 
 # PLOT TYPE1
 Color=['red','blue']
