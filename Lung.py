@@ -14,7 +14,7 @@ PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
 Opt=['Mua','Mus']
-Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08']
+Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10','DeltaGateNorm12']
 sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
 sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10','MeanGateOut11','MeanGateOut12','MeanGateOut13','MeanGateOut14','MeanGateOut15']
 sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
@@ -30,6 +30,7 @@ FILEFIT='POLm0080new2.txt'
 FILEKEY='keyPOLm0080.txt'
 PROT10=1
 PROT5=2
+sProt=['Prot10','Prot05']
 PROT10_PERIOD=10
 PROT10_BASE=10
 PROT5_PERIOD=5
@@ -42,8 +43,8 @@ InClock.insert(PROT10,range(2,5))
 InClock.insert(PROT5,range(3,10))
 OutClock.insert(PROT10,range(7,10))
 OutClock.insert(PROT5,range(13,20))
-Prot=PROT10
-REFOLDING=False
+Prot=PROT5
+REFOLDING=True
 
 # CONSTANTS
 NUMCHAN=4096
@@ -90,6 +91,7 @@ for ig in arange(NUMGATE):
 # sMeanGateIn=tuple(sMeanGateIn)
 
 # LOAD RAW DATA AND PROCESS THEM TO POPULATE DataFrame
+sumDtof=zeros([len(Data.Subject.unique()),NUMCHAN])
 for od in Data.Data.unique():
     item=Data[Data.Data==od].iloc[0,:]
     
@@ -117,6 +119,11 @@ for od in Data.Data.unique():
     # Calc peak
     Chan0=Syst.tolist().index(max(Syst))
     mtime=(arange(NUMCHAN)-Chan0)*ch2ps
+    
+    # Collect DTOF for Figure
+    if (item.Protocol==PROT10)&(item.Position=='UR')&(item.Detector=='HYBD'):
+        iSubject=Data.Subject.unique().tolist().index(item.Subject)
+        sumDtof[iSubject,:]+=sum(Dtof[1,:,:],axis=0)
     
 
 # % calculate
@@ -258,8 +265,22 @@ if PLOT_TYPE3:
             ylabel('log ratio to REF')
             title('pos='+op+' - subj='+os)
             grid(True)
-            
+                
+    figOpt.suptitle("OPTICAL PROPERTIES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+    figGate.suptitle("NORMALISED GATES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+    figMean.suptitle("MEAN GATES OVER PHASES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
     figOpt.tight_layout()
     figGate.tight_layout()
     figMean.tight_layout()
+
+    # plot Dtof
+    figDtof=figure()
+    sumDtof=sumDtof.transpose()
+    semilogy(mtime,sumDtof)
+    legend(Data.Subject.unique())
+    xlabel('time (ps)')
+    ylabel('counts')
+    xlim([0,8000])
+    grid(True)
+
     show()
