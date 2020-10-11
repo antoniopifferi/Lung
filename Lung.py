@@ -12,14 +12,14 @@ from pandas import *
 # OPTIONS
 Prot=2 # 1=PROT10, 2=PROT5
 REFOLDING=True
-SAVEFIG=False
+SAVEFIG=True
 PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
 PLOT_SPECTRA=True # plot the broadband spectra
 PLOT_DTOF=True # plot the DTOF
 Opt=['Mua','Mus']
-Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10','DeltaGateNorm12']
+Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10']
 sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
 sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10','MeanGateOut11','MeanGateOut12','MeanGateOut13','MeanGateOut14','MeanGateOut15']
 sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
@@ -193,7 +193,6 @@ if PLOT_TYPE1:
                 title('det='+od+' - subj='+os)
                 grid(True)
             fig.tight_layout()
-            show()    
             
 # PLOT TYPE2
 Color=['purple','blue']
@@ -213,7 +212,6 @@ if PLOT_TYPE2:
                 title('det='+od+' - subj='+os)
                 grid(True)
             fig.tight_layout()
-            show()
             
 # PLOT TYPE3
 Color=['purple','blue']
@@ -275,11 +273,10 @@ if PLOT_TYPE3:
     figOpt.tight_layout()
     figGate.tight_layout()
     figMean.tight_layout()
-    show()
     if SAVEFIG:
-        savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
-        savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
-        savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
+        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
+        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
+        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
 
 
 # plot DTOF
@@ -292,9 +289,8 @@ if PLOT_DTOF:
     ylabel('counts')
     xlim([0,8000])
     grid(True)
-    show()
     if SAVEFIG:
-        savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
+        figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
 
 # plot SPECTRA
 if PLOT_SPECTRA:
@@ -327,6 +323,7 @@ if PLOT_SPECTRA:
             ylim([0,15])
         grid(True)       
     figSpectra.tight_layout()
-    show()
     if SAVEFIG:
-        savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
+        figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
+
+show()
