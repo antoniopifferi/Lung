@@ -10,9 +10,14 @@ from matplotlib.pyplot import *
 from pandas import *
 
 # OPTIONS
+Prot=2 # 1=PROT10, 2=PROT5
+REFOLDING=True
+SAVEFIG=False
 PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
+PLOT_SPECTRA=True # plot the broadband spectra
+PLOT_DTOF=True # plot the DTOF
 Opt=['Mua','Mus']
 Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10','DeltaGateNorm12']
 sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
@@ -28,6 +33,8 @@ PATHANALYSIS='Analysis\\Polmone\\FIT\\'
 EXTDATA='.dat'
 FILEFIT='POLm0080new2.txt'
 FILEKEY='keyPOLm0080.txt'
+FILEKEYSPECTRA='keySpectra.txt'
+FILESPECTRA='FileSpectraOld.txt'
 PROT10=1
 PROT5=2
 sProt=['Prot10','Prot05']
@@ -43,8 +50,6 @@ InClock.insert(PROT10,range(2,5))
 InClock.insert(PROT5,range(3,10))
 OutClock.insert(PROT10,range(7,10))
 OutClock.insert(PROT5,range(13,20))
-Prot=PROT5
-REFOLDING=True
 
 # CONSTANTS
 NUMCHAN=4096
@@ -66,11 +71,9 @@ def cm2inch(*tupl):
     else:
         return tuple(i/inch for i in tupl)
 
-# LOAD DICT
+# LOAD FIT DATA
 dataKey=read_csv(PATHBETA+PATHANALYSIS+FILEKEY,sep='\t')
 dcKey=dict(zip(dataKey.Key, dataKey.Value))
-
-# LOAD FIT DATA
 Data=read_csv(PATHBETA+PATHANALYSIS+FILEFIT,sep='\t')
 Data.rename(columns=dcKey,inplace=True)
 
@@ -272,8 +275,15 @@ if PLOT_TYPE3:
     figOpt.tight_layout()
     figGate.tight_layout()
     figMean.tight_layout()
+    show()
+    if SAVEFIG:
+        savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
+        savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
+        savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
 
-    # plot Dtof
+
+# plot DTOF
+if PLOT_DTOF:
     figDtof=figure()
     sumDtof=sumDtof.transpose()
     semilogy(mtime,sumDtof)
@@ -282,5 +292,41 @@ if PLOT_TYPE3:
     ylabel('counts')
     xlim([0,8000])
     grid(True)
-
     show()
+    if SAVEFIG:
+        savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
+
+# plot SPECTRA
+if PLOT_SPECTRA:
+    
+    # LOAD FIT DATA
+    dataKey=read_csv(PATHBETA+PATHANALYSIS+FILEKEYSPECTRA,sep='\t')
+    dcKey=dict(zip(dataKey.Key, dataKey.Value))
+    Spectra=read_csv(PATHBETA+PATHANALYSIS+FILESPECTRA,sep='\t')
+    Spectra.rename(columns=dcKey,inplace=True)
+    Spectra['Position']=0
+    Spectra.loc[(Spectra.Region=='ANTERIORE')&(Spectra.Side=='DX'),'Position']='UR'
+    Spectra.loc[(Spectra.Region=='ANTERIORE')&(Spectra.Side=='SX'),'Position']='UL'
+    Spectra.loc[(Spectra.Region=='POSTERIORE')&(Spectra.Side=='DX'),'Position']='DR'
+    Spectra.loc[(Spectra.Region=='POSTERIORE')&(Spectra.Side=='SX'),'Position']='DL'
+
+    # plot    
+    pSpectra=Spectra[(Spectra.Fit=='-0.8-0.01')&(Spectra.Organ=='POLMONE')]
+    figSpectra=figure(figsize=cm2inch(30,12))
+    # plot Opt
+    for io,oo in enumerate(Opt):
+        ax=figSpectra.add_subplot(1,2,io+1)
+        sca(ax)
+        table=pSpectra.pivot_table(values=oo,index='Lambda',columns='Subject',aggfunc='mean')
+        table.plot(ax=ax,marker='D')
+        xlabel('Wavelength (nm)')
+        ylabel(YLABEL[oo])
+        if oo=='Mua':
+            ylim([0,0.5])
+        else:
+            ylim([0,15])
+        grid(True)       
+    figSpectra.tight_layout()
+    show()
+    if SAVEFIG:
+        savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
