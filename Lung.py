@@ -10,6 +10,7 @@ from matplotlib.pyplot import *
 from pandas import *
 
 # OPTIONS
+PRODUCTION=True
 Prot=2 # 1=PROT10, 2=PROT5
 REFOLDING=True
 SAVEFIG=True
@@ -62,6 +63,24 @@ ch2ps=50000/GAIN/NUMCHAN
 # if strcmp(System,'HYBD'), BkgCh1=330; else BkgCh1=500; end
 # if strcmp(System,'HYBD'), BkgCh2=700; else BkgCh2=800; end
 
+# FONT SIZE FOR PLOTS
+if PRODUCTION:
+    SMALL_SIZE = 10
+    MEDIUM_SIZE = 12
+    BIGGER_SIZE = 14
+    matplotlib.rc('font', size=SMALL_SIZE)          # controls default text sizes
+    matplotlib.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+    matplotlib.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+    matplotlib.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+    matplotlib.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+# DIMENSION OF FIGURES
+if PRODUCTION:
+    FIGWIDTH = 40
+else: 
+    FIGWIDTH = 50
 
 # CONVERSION FUNCTION
 def cm2inch(*tupl):
@@ -181,7 +200,7 @@ Linestyle=['-','--']
 if PLOT_TYPE1:
     for od in Data.Detector.unique():
         for os in Data[Data.Detector==od].Subject.unique():
-            fig=figure(figsize=cm2inch(40, 15))
+            fig=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
             protocol=Data.Protocol.unique()
             for ip,op in enumerate(protocol):
                 ax=fig.add_subplot(1,len(protocol),1+ip)
@@ -200,7 +219,7 @@ Linestyle=['-','--']
 if PLOT_TYPE2:
     for od in Data.Detector.unique():
         for os in Data[Data.Detector==od].Subject.unique():
-            fig=figure(figsize=cm2inch(40, 15))
+            fig=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
             protocol=Data.Protocol.unique()
             for ip,op in enumerate(protocol):
                 ax=fig.add_subplot(1,len(protocol),1+ip)
@@ -218,9 +237,9 @@ Color=['purple','blue']
 Linestyle=['-','--']
 if PLOT_TYPE3:
     pData=Data[(Data.Detector=='HYBD')&(Data.Protocol==Prot)]
-    figOpt=figure(figsize=cm2inch(50,20))
-    figGate=figure(figsize=cm2inch(50,20))
-    figMean=figure(figsize=cm2inch(50,20))
+    figOpt=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figGate=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figMean=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     position=pData.Position.unique()
     subject=pData.Subject.unique()
     for ip,op in enumerate(position):
@@ -308,7 +327,7 @@ if PLOT_SPECTRA:
 
     # plot    
     pSpectra=Spectra[(Spectra.Fit=='-0.8-0.01')&(Spectra.Organ=='POLMONE')]
-    figSpectra=figure(figsize=cm2inch(30,12))
+    figSpectra=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     # plot Opt
     for io,oo in enumerate(Opt):
         ax=figSpectra.add_subplot(1,2,io+1)
