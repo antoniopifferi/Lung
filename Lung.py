@@ -233,42 +233,54 @@ if PLOT_TYPE2:
             fig.tight_layout()
             
 # PLOT TYPE3
-Color=['purple','blue']
+Color=['red','blue']
 Linestyle=['-','--']
 if PLOT_TYPE3:
     pData=Data[(Data.Detector=='HYBD')&(Data.Protocol==Prot)]
+    position=pData.Position.unique()
+    subject=pData.Subject.unique()
+    np=len(position)
+    ns=len(subject)
     figOpt=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figGate=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figMean=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
-    position=pData.Position.unique()
-    subject=pData.Subject.unique()
+    gsOpt=figOpt.add_gridspec(np,ns, hspace=0, wspace=0)
+    gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0)
+    gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0)
+    axsOpt=gsOpt.subplots(sharex=True)
+    axsGate=gsGate.subplots(sharex=True,sharey=True)
+    axsMean=gsMean.subplots(sharex=True,sharey=True)
+    
     for ip,op in enumerate(position):
         for iss,os in enumerate(subject):
             
             # plot Opt
-            axOpt=figOpt.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
-            sca(axOpt)
+            sca(axsOpt[ip,iss])
             for io,oo in enumerate(Opt):
                 table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
-                table[oo].plot(ax=axOpt,secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
-                ylabel(YLABEL[oo],color=Color[io])
-            xlabel(XLABEL)
-            title('pos='+op+' - subj='+os)
+                #table[oo].plot(ax=axsOpt[ip,iss],secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+                table[oo].plot(secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+                if ((oo=='Mua')&(iss==0)): ylabel(YLABEL[oo],color=Color[io])
+                if ((oo=='Mus')&(iss==(ns-1))): ylabel(YLABEL[oo],color=Color[io])
+                tick_params(axis="y",direction="in", pad=-35, labelcolor=Color[io])
+                gca().yaxis.set_major_locator(MaxNLocator(3))
+                #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+                #gca().yaxis.set_major_locator(MultipleLocator(0.1))
+            if ip==(np-1): xlabel(XLABEL)
+            if ip==0: title('pos='+op+' - subj='+os)
             grid(True)
             
             # plot Gate
-            axGate=figGate.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
-            sca(axGate)
+            sca(axsGate[ip,iss])
             table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Gates,index='RefTime',aggfunc='mean')
-            table.plot(ax=axGate)
+            table.plot(ax=axsGate[ip,iss])
             xlabel(XLABEL)
             ylabel('log ratio to REF')
             title('pos='+op+' - subj='+os)
             grid(True)
 
             # plot Mean
-            axMean=figMean.add_subplot(len(position),len(subject),1+iss+ip*len(subject))
-            sca(axMean)
+            sca(axsMean[ip,iss])
             temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateIn,index='Detector',aggfunc='mean')
             mgIn=temp.to_numpy().transpose()
             temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateOut,index='Detector',aggfunc='mean')
