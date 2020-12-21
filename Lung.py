@@ -26,6 +26,12 @@ sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','M
 sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
 YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
 XLABEL='time (s)'
+COMP_LIST=['HHb','O2Hb','tHb','SO2','Lipid','H2O','Coll','Tot']
+FIRST_LAMBDA=610
+LAMBDA0=600
+LAMBDA1=700
+LAMBDA2=900
+
 
 # PARAMETERS
 PATHBETA='C:\\OneDrivePolimi\\OneDrive - Politecnico di Milano\\Beta\\'
@@ -35,7 +41,9 @@ EXTDATA='.dat'
 FILEFIT='POLm0080new2.txt'
 FILEKEY='keyPOLm0080.txt'
 FILEKEYSPECTRA='keySpectra.txt'
-FILESPECTRA='FileSpectraOld.txt'
+FILESPECTRA='FileSpectraAll.txt'
+FileComponents='Components0.txt'
+FILECOMPOUT='CompOut.txt'
 PROT10=1
 PROT5=2
 sProt=['Prot10','Prot05']
@@ -338,7 +346,10 @@ if PLOT_SPECTRA:
     Spectra.loc[(Spectra.Region=='POSTERIORE')&(Spectra.Side=='SX'),'Position']='DL'
 
     # plot    
-    pSpectra=Spectra[(Spectra.Fit=='-0.8-0.01')&(Spectra.Organ=='POLMONE')]
+    #pSpectra=Spectra[(Spectra.Fit=='-0.8-0.01')&(Spectra.Organ=='POLMONE')]
+    pSpectra=Spectra[(Spectra.Fit!='0.3-0.001')&(Spectra.Organ=='POLMONE')]
+    pSpectra = pSpectra[pSpectra.Lambda!=920]
+    pSpectra = pSpectra[pSpectra.Lambda!=600]
     figSpectra=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     # plot Opt
     for io,oo in enumerate(Opt):
@@ -357,4 +368,38 @@ if PLOT_SPECTRA:
     if SAVEFIG:
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
 
+#%% CALC COMPONENTS
+Components=read_table(PATHBETA+PATHANALYSIS+FileComponents)
+figure()
+Components.plot(x='Lambda')
+yscale('log')
+ylim([0,0.5]), title('Components'), xlabel('wavelength (nm)'), ylabel('specific absorption (cm-1)')
 show()
+
+table=pSpectra.pivot_table(values=Opt,index='Lambda',columns='Subject',aggfunc='mean')
+comp=Components[Components['Lambda'].isin(pSpectra.Lambda.unique())].values
+comp=delete(comp,0,1)
+aComp=linalg.lstsq(comp,table['Mua'],rcond=None)[0] #[0] to extract m-coeff in lstsq
+y=log(table.loc[LAMBDA1:LAMBDA2,'Mus'])
+x=log(y.index/LAMBDA0)
+model=polyfit(x,y,1)
+b=-model[0]
+a=exp(model[1])
+#A = vstack([x, np.ones(len(x))]).T
+dfComp=DataFrame(data=aComp.transpose(),columns=Components.columns[1:],index=table.Mua.columns)
+dfComp['tHb']=dfComp['HHb']+dfComp['O2Hb']
+dfComp['SO2']=dfComp['O2Hb']/dfComp['tHb']
+dfComp['Tot']=dfComp['Lipid']+dfComp['H2O']+dfComp['Coll']
+dfComp['FitComp']='LambdaFit'
+dfComp['a']=a
+dfComp['b']=b
+dfComp.plot()
+dfComp.to_csv(path_or_buf=PATHBETA+PATHANALYSIS+FILECOMPOUT,sep='\t')
+figure()
+plot(x,y)
+#filtData=merge(filtData,dfComp,on=['Subject','Meas','Rho'])
+
+show()
+
+
+
