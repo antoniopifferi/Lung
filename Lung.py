@@ -19,6 +19,7 @@ PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
 PLOT_SPECTRA=True # plot the broadband spectra
 PLOT_DTOF=True # plot the DTOF
+PLOT_DEPTH=True # plot the DTOF
 Opt=['Mua','Mus']
 Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10']
 sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
@@ -31,6 +32,8 @@ FIRST_LAMBDA=610
 LAMBDA0=600
 LAMBDA1=700
 LAMBDA2=900
+LAMBDA_DEPTH=820 # wavelength where the depth is calculated
+MUS0_DEPTH=10 # (cm-1) pivot scattering for the empirical formula on Zmax (depth)
 
 
 # PARAMETERS
@@ -41,6 +44,7 @@ EXTDATA='.dat'
 FILEFIT='POLm0080new2.txt'
 FILEKEY='keyPOLm0080.txt'
 FILEKEYSPECTRA='keySpectra.txt'
+FILEKEYSUBJECT='keySubject.txt'
 FILESPECTRA='FileSpectraAll.txt'
 FileComponents='Components0.txt'
 FILECOMPOUT='CompOut.txt'
@@ -59,6 +63,10 @@ InClock.insert(PROT10,range(2,5))
 InClock.insert(PROT5,range(3,10))
 OutClock.insert(PROT10,range(7,10))
 OutClock.insert(PROT5,range(13,20))
+
+# EMPIRICAL FORMULA FOR DEPTH: Zmax=2*a*t^b (n_int=1.4, n_ext=1) NOTE:2* because formula is for Zmax
+aDepth=0.1511
+bDepth=0.5433
 
 # CONSTANTS
 NUMCHAN=4096
@@ -103,6 +111,11 @@ dataKey=read_csv(PATHBETA+PATHANALYSIS+FILEKEY,sep='\t')
 dcKey=dict(zip(dataKey.Key, dataKey.Value))
 Data=read_csv(PATHBETA+PATHANALYSIS+FILEFIT,sep='\t')
 Data.rename(columns=dcKey,inplace=True)
+sbjKey=read_csv(PATHBETA+PATHANALYSIS+FILEKEYSUBJECT,sep='\t')
+dcKeyS=dict(zip(sbjKey.Key, sbjKey.Value))
+Data['Subject'].replace(dcKeyS, inplace=True)
+
+
 
 # CREATES COL-FIELDS INITIALISED TO 0
 for ig in arange(NUMGATE):
@@ -249,9 +262,9 @@ if PLOT_TYPE3:
     subject=pData.Subject.unique()
     np=len(position)
     ns=len(subject)
-    figOpt=figure(figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
-    figGate=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
-    figMean=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figOpt=figure(num='FigOpt',figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
+    figGate=figure(num='FigGate',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figMean=figure(num='FigMean',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     gsOpt=figOpt.add_gridspec(ns,np, hspace=0, wspace=0.5)
     gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0)
     gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0)
@@ -314,13 +327,16 @@ if PLOT_TYPE3:
     figMean.tight_layout()
     if SAVEFIG:
         figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
+        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.jpg',format='jpg')
         figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
+        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.jpg',format='jpg')
         figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
+        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.jpg',format='jpg')
 
 
 # plot DTOF
 if PLOT_DTOF:
-    figDtof=figure()
+    figDtof=figure(num='FigDtof')
     sumDtof=sumDtof.transpose()
     semilogy(mtime,sumDtof)
     legend(Data.Subject.unique())
@@ -330,6 +346,7 @@ if PLOT_DTOF:
     grid(True)
     if SAVEFIG:
         figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
+        figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.jpg',format='jpg')
 
 # plot SPECTRA
 if PLOT_SPECTRA:
@@ -339,6 +356,7 @@ if PLOT_SPECTRA:
     dcKey=dict(zip(dataKey.Key, dataKey.Value))
     Spectra=read_csv(PATHBETA+PATHANALYSIS+FILESPECTRA,sep='\t')
     Spectra.rename(columns=dcKey,inplace=True)
+    Spectra['Subject'].replace(dcKeyS, inplace=True)
     Spectra['Position']=0
     Spectra.loc[(Spectra.Region=='ANTERIORE')&(Spectra.Side=='DX'),'Position']='UR'
     Spectra.loc[(Spectra.Region=='ANTERIORE')&(Spectra.Side=='SX'),'Position']='UL'
@@ -350,7 +368,7 @@ if PLOT_SPECTRA:
     pSpectra=Spectra[(Spectra.Fit!='0.3-0.001')&(Spectra.Organ=='POLMONE')]
     pSpectra = pSpectra[pSpectra.Lambda!=920]
     pSpectra = pSpectra[pSpectra.Lambda!=600]
-    figSpectra=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figSpectra=figure(num='FigSpectra',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     # plot Opt
     for io,oo in enumerate(Opt):
         ax=figSpectra.add_subplot(1,2,io+1)
@@ -367,10 +385,70 @@ if PLOT_SPECTRA:
     figSpectra.tight_layout()
     if SAVEFIG:
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
+        figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.jpg',format='jpg')
+
+# plot DEPTH (see on top parameters)
+if PLOT_DEPTH:
+    intDtof=zeros(shape(sumDtof))
+    figIntDtof=figure(num='FigIntDtof')
+    for ic in arange(NUMCHAN):
+        intDtof[ic,:]=sum(sumDtof[ic:,:],axis=0)
+    semilogy(mtime,intDtof)
+    legend(Data.Subject.unique())
+    xlabel('time (ps)')
+    ylabel('counts')
+    xlim([0,8000])
+    grid()
+    
+    maxTimeChan=argmin((intDtof>10000*20),axis=0)
+    maxTimeTime=mtime[maxTimeChan]
+
+    table=pSpectra.pivot_table(values=Opt,index='Lambda',columns='Subject',aggfunc='mean')
+    MusDepth=table['Mus'].loc[LAMBDA_DEPTH]
+    Zmax=zeros(shape(sumDtof))
+    for iss,oss in enumerate(Data.Subject.unique()):
+        Zmax[:,iss]=2*aDepth*(mtime*MUS0_DEPTH/MusDepth[oss])**bDepth
+    figZmax=figure(num='FigZmax')
+    gca().set_prop_cycle(None)
+    plot(mtime,Zmax,linewidth=4)
+    
+    maxTimeZ=zeros(shape(maxTimeChan))
+    for iss in arange(ns):
+        maxTimeZ[iss]=Zmax[maxTimeChan[iss],iss]
+    xx=stack((maxTimeTime,maxTimeTime))
+    yy=stack((zeros(shape(maxTimeZ)),maxTimeZ))
+    gca().set_prop_cycle(None)
+    plot(xx,yy)
+    xx=stack((zeros(shape(maxTimeTime)),maxTimeTime))
+    yy=stack((maxTimeZ,maxTimeZ))
+    gca().set_prop_cycle(None)
+    plot(xx,yy)
+
+    legend(Data.Subject.unique())
+    xlabel('time (ps)')
+    ylabel('Zmax (mm)')
+    xlim([0,8000])
+    ylim([0,60])
+    grid()
+
+    if SAVEFIG:
+        figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.eps',format='eps')
+        figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.jpg',format='jpg')
+    
+        
+# show()
+    # grid(True)
+    # if SAVEFIG:
+    #     figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
+
+
+
+
+
 
 #%% CALC COMPONENTS
 Components=read_table(PATHBETA+PATHANALYSIS+FileComponents)
-figure()
+figure(num='FigComp')
 Components.plot(x='Lambda')
 yscale('log')
 ylim([0,0.5]), title('Components'), xlabel('wavelength (nm)'), ylabel('specific absorption (cm-1)')
@@ -395,9 +473,10 @@ dfComp['a']=a
 dfComp['b']=b
 dfComp.plot()
 dfComp.to_csv(path_or_buf=PATHBETA+PATHANALYSIS+FILECOMPOUT,sep='\t')
-figure()
+figure(num='FigConc')
 plot(x,y)
 #filtData=merge(filtData,dfComp,on=['Subject','Meas','Rho'])
+
 
 show()
 
