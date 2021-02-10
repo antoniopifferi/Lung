@@ -24,7 +24,7 @@ Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','
 sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
 sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10','MeanGateOut11','MeanGateOut12','MeanGateOut13','MeanGateOut14','MeanGateOut15']
 sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
-YLABEL={'Mua':'absorption (cm-1)','Mus':'reduced scattering (cm-1)'}
+YLABEL={'Mua':'$\mu_a$ (cm$^{-1}$)','Mus':'$\mu_s\prime$ (cm$^{-1}$)'}
 XLABEL='time (s)'
 COMP_LIST=['HHb','O2Hb','tHb','SO2','Lipid','H2O','Coll','Tot']
 FIRST_LAMBDA=610
@@ -240,7 +240,7 @@ if PLOT_TYPE2:
                 grid(True)
             fig.tight_layout()
             
-# PLOT TYPE3
+#%% PLOT TYPE3
 Color=['red','blue']
 Linestyle=['-','--']
 if PLOT_TYPE3:
@@ -249,10 +249,10 @@ if PLOT_TYPE3:
     subject=pData.Subject.unique()
     np=len(position)
     ns=len(subject)
-    figOpt=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
+    figOpt=figure(figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
     figGate=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figMean=figure(figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
-    gsOpt=figOpt.add_gridspec(np,ns, hspace=0, wspace=0)
+    gsOpt=figOpt.add_gridspec(ns,np, hspace=0, wspace=0.5)
     gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0)
     gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0)
     axsOpt=gsOpt.subplots(sharex=True)
@@ -263,19 +263,19 @@ if PLOT_TYPE3:
         for iss,os in enumerate(subject):
             
             # plot Opt
-            sca(axsOpt[ip,iss])
+            sca(axsOpt[iss,ip])
             for io,oo in enumerate(Opt):
                 table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
                 #table[oo].plot(ax=axsOpt[ip,iss],secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
                 table[oo].plot(secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
-                if ((oo=='Mua')&(iss==0)): ylabel(YLABEL[oo],color=Color[io])
-                if ((oo=='Mus')&(iss==(ns-1))): ylabel(YLABEL[oo],color=Color[io])
-                tick_params(axis="y",direction="in", pad=-35, labelcolor=Color[io])
-                gca().yaxis.set_major_locator(MaxNLocator(3))
+                if ((oo=='Mua')&(ip==0)): ylabel(YLABEL[oo],color=Color[io])
+                if ((oo=='Mus')&(ip==(np-1))): ylabel(YLABEL[oo],color=Color[io])
+                tick_params(axis="y",labelcolor=Color[io])
+                #gca().yaxis.set_major_locator(MaxNLocator(3))
                 #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
                 #gca().yaxis.set_major_locator(MultipleLocator(0.1))
-            if ip==(np-1): xlabel(XLABEL)
-            if ip==0: title('pos='+op+' - subj='+os)
+            if iss==(ns-1): xlabel(XLABEL)
+            if iss==0: title('pos='+op+' - subj='+os)
             grid(True)
             
             # plot Gate
