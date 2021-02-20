@@ -8,12 +8,15 @@ from numpy import *
 #from scipy import *
 from matplotlib.pyplot import *
 from pandas import *
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.ticker as ticker
 
 # OPTIONS
-PRODUCTION=True
+PRODUCTION=False
+FIG_PW2021=True
 Prot=2 # 1=PROT10, 2=PROT5
 REFOLDING=True
-SAVEFIG=True
+SAVEFIG=False
 PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
 PLOT_TYPE3=True # all param
@@ -57,6 +60,7 @@ PROT5_PERIOD=5
 NUMGATE=16
 WIDTHGATE=500 # ps
 MINREF=100 # used to avoid divide by zero (could be set higher)
+ACQDTOF=20 # number of acquisitions in the DTOF
 InClock=[]
 OutClock=[]
 InClock.insert(PROT10,range(2,5))
@@ -97,6 +101,22 @@ if PRODUCTION:
     FIGWIDTH = 40
 else: 
     FIGWIDTH = 50
+
+if FIG_PW2021:
+    style.use(['science','no-latex'])
+    FIGWIDTH = 35
+    SMALL_SIZE = 12
+    MEDIUM_SIZE = 14
+    BIGGER_SIZE = 16
+    matplotlib.rc('font', size=SMALL_SIZE)          # controls default text sizes
+    matplotlib.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+    matplotlib.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+    matplotlib.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+    matplotlib.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
 
 # CONVERSION FUNCTION
 def cm2inch(*tupl):
@@ -187,7 +207,8 @@ for od in Data.Data.unique():
         Ref=mean(Gate[ir,:,:],axis=0) # nore: Gate here is 2D since ir reduce dimensions
         Ref[Ref<MINREF]=0
         for ik in arange(item.NumClock):
-            DeltaGateNorm[ir,ik,:]=nan_to_num(-log(Gate[ir,ik,:]/Ref))
+            DeltaGateNorm[ir,ik,:]=nan_to_num((Gate[ir,ik,:]-Ref)/Ref)
+            # DeltaGateNorm[ir,ik,:]=nan_to_num(-log(Gate[ir,ik,:]/Ref))
     for ig in arange(NUMGATE):    
         Data.loc[Data.Data==od,'DeltaGateNorm'+str(ig).zfill(2)]=DeltaGateNorm[:,:,ig].flatten()    
         
@@ -262,43 +283,91 @@ if PLOT_TYPE3:
     subject=pData.Subject.unique()
     np=len(position)
     ns=len(subject)
-    figOpt=figure(num='FigOpt',figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
+    # figOpt=figure(num='FigOpt',figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
+    figOpt=figure(num='FigOpt',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figGate=figure(num='FigGate',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figMean=figure(num='FigMean',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
-    gsOpt=figOpt.add_gridspec(ns,np, hspace=0, wspace=0.5)
-    gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0)
-    gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0)
+    # gsOpt=figOpt.add_gridspec(ns,np, hspace=0, wspace=0.5)
+    gsOpt=figOpt.add_gridspec(np,ns, hspace=0, wspace=0.5)
+    gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0.3)
+    gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0.3)
     axsOpt=gsOpt.subplots(sharex=True)
-    axsGate=gsGate.subplots(sharex=True,sharey=True)
-    axsMean=gsMean.subplots(sharex=True,sharey=True)
+    axsGate=gsGate.subplots(sharex=True)
+    axsMean=gsMean.subplots(sharex=True)
+    # axsMean=gsMean.subplots(sharex=True,sharey=True)
     
     for ip,op in enumerate(position):
         for iss,os in enumerate(subject):
             
+            # # plot Opt
+            # sca(axsOpt[iss,ip])
+            # for io,oo in enumerate(Opt):
+            #     table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
+            #     #table[oo].plot(ax=axsOpt[ip,iss],secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+            #     table[oo].plot(secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
+            #     if ((oo=='Mua')&(ip==0)): ylabel(YLABEL[oo],color=Color[io])
+            #     if ((oo=='Mus')&(ip==(np-1))): ylabel(YLABEL[oo],color=Color[io])
+            #     tick_params(axis="y",labelcolor=Color[io])
+            #     #gca().yaxis.set_major_locator(MaxNLocator(3))
+            #     #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            #     #gca().yaxis.set_major_locator(MultipleLocator(0.1))
+            # if iss==(ns-1): xlabel(XLABEL)
+            # if iss==0: title('pos='+op+' - subj='+os)
+            # grid(True)
+
             # plot Opt
-            sca(axsOpt[iss,ip])
+            sca(axsOpt[ip,iss])
             for io,oo in enumerate(Opt):
                 table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
                 #table[oo].plot(ax=axsOpt[ip,iss],secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
                 table[oo].plot(secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
-                if ((oo=='Mua')&(ip==0)): ylabel(YLABEL[oo],color=Color[io])
-                if ((oo=='Mus')&(ip==(np-1))): ylabel(YLABEL[oo],color=Color[io])
                 tick_params(axis="y",labelcolor=Color[io])
-                #gca().yaxis.set_major_locator(MaxNLocator(3))
+                if oo=='Mus':
+                    gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+                    if ((iss==(ns-1))&(ip==0)): ylabel('UP - '+YLABEL[oo],color=Color[io])
+                    if ((iss==(ns-1))&(ip==(np-1))): ylabel('DOWN - '+YLABEL[oo],color=Color[io])
+                    axvline(10,color='gray',linewidth=2)
+                    #gca().text(3, 8, 'boxed italics text in data coords', style='italic',
+                    # bbox={'facecolor': 'red', 'alpha': 0.5, 'pad': 10})
+                    #text(0.5,0,'blah',rotation=90)
+                else:
+                    gca().yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+                    if ((iss==0)&(ip==0)): ylabel('UP - '+YLABEL[oo],color=Color[io])
+                    if ((iss==0)&(ip==(np-1))): ylabel('DOWN - '+YLABEL[oo],color=Color[io])
+                        #gca().yaxis.set_major_locator(MaxNLocator(3))
                 #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
                 #gca().yaxis.set_major_locator(MultipleLocator(0.1))
-            if iss==(ns-1): xlabel(XLABEL)
-            if iss==0: title('pos='+op+' - subj='+os)
             grid(True)
+            if FIG_PW2021:
+                if ip==(np-1): axsOpt[ip,iss].set_xlabel('time (s)')
+                axsOpt[ip,iss].set_xlabel('time (s)')
+                if ip==0: title('subject #'+str(iss+1))
+            else:
+                figOpt.suptitle("OPTICAL PROPERTIES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+                if iss==(ns-1): xlabel(XLABEL)
+                if iss==0: title('pos='+op+' - subj='+os)
+                if ((oo=='Mua')&(iss==0)): ylabel(YLABEL[oo],color=Color[io])
+                if ((oo=='Mus')&(iss==(ns-1))): ylabel(YLABEL[oo],color=Color[io])
             
             # plot Gate
             sca(axsGate[ip,iss])
             table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Gates,index='RefTime',aggfunc='mean')
-            table.plot(ax=axsGate[ip,iss])
-            xlabel(XLABEL)
-            ylabel('log ratio to REF')
-            title('pos='+op+' - subj='+os)
+            table.plot(ax=axsGate[ip,iss],legend=False)
             grid(True)
+            if FIG_PW2021:
+                if ip==(np-1): xlabel('time (s)')
+                if((ip==(np-1))and(iss==0)):
+                    legend(['0.5 ns','1.5 ns','2.5 ns','3.5 ns','4.5 ns'])
+                else:
+                    axvline(10,color='gray',linewidth=2)
+                if ip==0: title('subject #'+str(iss+1))
+                if iss==0 and ip==0: ylabel('UP - contrast')
+                if iss==0 and ip==(np-1): ylabel('DOWN - contrast')
+            else:
+                xlabel(XLABEL)
+                ylabel('log ratio to REF')
+                title('pos='+op+' - subj='+os)
+                figGate.suptitle("NORMALISED GATES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
 
             # plot Mean
             sca(axsMean[ip,iss])
@@ -308,36 +377,47 @@ if PLOT_TYPE3:
             mgOut=temp.to_numpy().transpose()
             temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateDiff,index='Detector',aggfunc='mean')
             # mgDiff=temp.to_numpy().transpose()
-            mgDiff=mgOut-mgIn
+            # mgDiff=mgOut-mgIn
+            mgDiff=mgIn-mgOut
             # A=column_stack(mgIn,mgOut,mgDiff)
             plot(TimeGate,mgIn,label='IN')
             plot(TimeGate,mgOut,label='OUT')
-            plot(TimeGate,mgDiff,label='OUT-IN')
+            plot(TimeGate,mgDiff,label='IN-OUT')
             legend()
-            xlabel('time gate (ps)')
-            ylabel('log ratio to REF')
-            title('pos='+op+' - subj='+os)
             grid(True)
+            if FIG_PW2021:
+                if ip==0: title('subject #'+str(iss+1))
+                if ip==(np-1): xlabel('time gate (ps)')
+                if iss==0 and ip==0: ylabel('UP - contrast')
+                if iss==0 and ip==(np-1): ylabel('DOWN - contrast')
+                # axsMean[ip,iss].yaxis.set_major_formatter(ticker.PercentFormatter())
+            else:
+                xlabel('time gate (ps)')
+                ylabel('log ratio to REF')
+                title('pos='+op+' - subj='+os)
+                figMean.suptitle("MEAN GATES OVER PHASES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
                 
-    figOpt.suptitle("OPTICAL PROPERTIES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
-    figGate.suptitle("NORMALISED GATES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
-    figMean.suptitle("MEAN GATES OVER PHASES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
     figOpt.tight_layout()
     figGate.tight_layout()
     figMean.tight_layout()
     if SAVEFIG:
         figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
-        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.jpg',format='jpg')
         figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
-        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.jpg',format='jpg')
         figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
+    if FIG_PW2021:
+        # pdf=PdfPages('FigMean.pdf')
+        # pdf.savefig(figMean)
+        # pdf.close()
+        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.jpg',format='jpg')
+        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.jpg',format='jpg')
         figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.jpg',format='jpg')
+
 
 
 # plot DTOF
 if PLOT_DTOF:
-    figDtof=figure(num='FigDtof')
-    sumDtof=sumDtof.transpose()
+    figDtof=figure(num='FigDtof',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
+    sumDtof=sumDtof.transpose()/ACQDTOF
     semilogy(mtime,sumDtof)
     legend(Data.Subject.unique())
     xlabel('time (ps)')
@@ -346,6 +426,7 @@ if PLOT_DTOF:
     grid(True)
     if SAVEFIG:
         figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
+    if FIG_PW2021:
         figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.jpg',format='jpg')
 
 # plot SPECTRA
@@ -385,12 +466,13 @@ if PLOT_SPECTRA:
     figSpectra.tight_layout()
     if SAVEFIG:
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
+    if FIG_PW2021:
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.jpg',format='jpg')
 
 # plot DEPTH (see on top parameters)
 if PLOT_DEPTH:
     intDtof=zeros(shape(sumDtof))
-    figIntDtof=figure(num='FigIntDtof')
+    figIntDtof=figure(num='FigIntDtof',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
     for ic in arange(NUMCHAN):
         intDtof[ic,:]=sum(sumDtof[ic:,:],axis=0)
     semilogy(mtime,intDtof)
@@ -400,20 +482,26 @@ if PLOT_DEPTH:
     xlim([0,8000])
     grid()
     
-    maxTimeChan=argmin((intDtof>10000*20),axis=0)
+    maxTimeChan=argmin((intDtof>10000),axis=0)
     maxTimeTime=mtime[maxTimeChan]
 
     table=pSpectra.pivot_table(values=Opt,index='Lambda',columns='Subject',aggfunc='mean')
     MusDepth=table['Mus'].loc[LAMBDA_DEPTH]
+    MuaDepth=table['Mua'].loc[LAMBDA_DEPTH]
     Zmax=zeros(shape(sumDtof))
     for iss,oss in enumerate(Data.Subject.unique()):
         Zmax[:,iss]=2*aDepth*(mtime*MUS0_DEPTH/MusDepth[oss])**bDepth
-    figZmax=figure(num='FigZmax')
+    # Zmax=zeros(shape(sumDtof))
+    # for iss,oss in enumerate(Data.Subject.unique()):
+    #     Zmax[:,iss]=2*aDepth*(mtime)**bDepth
+    figZmax=figure(num='FigZmax',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
     gca().set_prop_cycle(None)
-    plot(mtime,Zmax,linewidth=4)
+    plot(mtime,Zmax,linewidth=2)
+    # plot(mtime,Zmax,linewidth=4,color='gray')
     
     maxTimeZ=zeros(shape(maxTimeChan))
-    for iss in arange(ns):
+    # for iss in arange(ns):
+    for iss,oss in enumerate(Data.Subject.unique()):
         maxTimeZ[iss]=Zmax[maxTimeChan[iss],iss]
     xx=stack((maxTimeTime,maxTimeTime))
     yy=stack((zeros(shape(maxTimeZ)),maxTimeZ))
@@ -433,6 +521,7 @@ if PLOT_DEPTH:
 
     if SAVEFIG:
         figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.eps',format='eps')
+    if FIG_PW2021:
         figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.jpg',format='jpg')
     
         
