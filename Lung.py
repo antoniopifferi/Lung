@@ -14,7 +14,9 @@ import matplotlib.ticker as ticker
 # OPTIONS
 PRODUCTION=False
 FIG_PW2021=True
-Prot=2 # 1=PROT10, 2=PROT5
+Prot=1 # 1=PROT10, 2=PROT5 (PROT10=10 rep with 5+5s, PROT5=5 rep with 10+10s)
+if Prot==1: VERT_LINE=5
+if Prot==2: VERT_LINE=10
 REFOLDING=True
 SAVEFIG=False
 PLOT_TYPE1=False # only Mua
@@ -324,16 +326,16 @@ if PLOT_TYPE3:
                 tick_params(axis="y",labelcolor=Color[io])
                 if oo=='Mus':
                     gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-                    if ((iss==(ns-1))&(ip==0)): ylabel('UP - '+YLABEL[oo],color=Color[io])
-                    if ((iss==(ns-1))&(ip==(np-1))): ylabel('DOWN - '+YLABEL[oo],color=Color[io])
-                    axvline(10,color='gray',linewidth=2)
+                    if ((iss==(ns-1))&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
+                    if ((iss==(ns-1))&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
+                    axvline(VERT_LINE,color='gray',linewidth=2)
                     #gca().text(3, 8, 'boxed italics text in data coords', style='italic',
                     # bbox={'facecolor': 'red', 'alpha': 0.5, 'pad': 10})
                     #text(0.5,0,'blah',rotation=90)
                 else:
                     gca().yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-                    if ((iss==0)&(ip==0)): ylabel('UP - '+YLABEL[oo],color=Color[io])
-                    if ((iss==0)&(ip==(np-1))): ylabel('DOWN - '+YLABEL[oo],color=Color[io])
+                    if ((iss==0)&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
+                    if ((iss==0)&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
                         #gca().yaxis.set_major_locator(MaxNLocator(3))
                 #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
                 #gca().yaxis.set_major_locator(MultipleLocator(0.1))
@@ -359,10 +361,10 @@ if PLOT_TYPE3:
                 if((ip==(np-1))and(iss==0)):
                     legend(['0.5 ns','1.5 ns','2.5 ns','3.5 ns','4.5 ns'])
                 else:
-                    axvline(10,color='gray',linewidth=2)
+                    axvline(VERT_LINE,color='gray',linewidth=2)
                 if ip==0: title('subject #'+str(iss+1))
-                if iss==0 and ip==0: ylabel('UP - contrast')
-                if iss==0 and ip==(np-1): ylabel('DOWN - contrast')
+                if iss==0 and ip==0: ylabel('Position1 - contrast')
+                if iss==0 and ip==(np-1): ylabel('Position2 - contrast')
             else:
                 xlabel(XLABEL)
                 ylabel('log ratio to REF')
@@ -388,8 +390,8 @@ if PLOT_TYPE3:
             if FIG_PW2021:
                 if ip==0: title('subject #'+str(iss+1))
                 if ip==(np-1): xlabel('time gate (ps)')
-                if iss==0 and ip==0: ylabel('UP - contrast')
-                if iss==0 and ip==(np-1): ylabel('DOWN - contrast')
+                if iss==0 and ip==0: ylabel('Position1 - contrast')
+                if iss==0 and ip==(np-1): ylabel('Position2 - contrast')
                 # axsMean[ip,iss].yaxis.set_major_formatter(ticker.PercentFormatter())
             else:
                 xlabel('time gate (ps)')
