@@ -13,10 +13,14 @@ import matplotlib.ticker as ticker
 
 # OPTIONS
 PRODUCTION=False
-FIG_PW2021=True
-Prot=1 # 1=PROT10, 2=PROT5 (PROT10=10 rep with 5+5s, PROT5=5 rep with 10+10s)
+FIG_PW2021=False
+FIG_PAPER=True
+BKG=False
+Prot=2 # 1=PROT5, 2=PROT10 (PROT5=10 rep with 5+5s, PROT10=5 rep with 10+10s)
 if Prot==1: VERT_LINE=5
 if Prot==2: VERT_LINE=10
+MIN_COUNT_RATE=10000 # minimum number of photons for late gate (1s acquisition)
+MAX_TIME=8000 # ps time scale
 REFOLDING=True
 SAVEFIG=False
 PLOT_TYPE1=False # only Mua
@@ -27,9 +31,9 @@ PLOT_DTOF=True # plot the DTOF
 PLOT_DEPTH=True # plot the DTOF
 Opt=['Mua','Mus']
 Gates=['DeltaGateNorm02','DeltaGateNorm04','DeltaGateNorm06','DeltaGateNorm08','DeltaGateNorm10']
-sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10','MeanGateIn11','MeanGateIn12','MeanGateIn13','MeanGateIn14','MeanGateIn15']
-sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10','MeanGateOut11','MeanGateOut12','MeanGateOut13','MeanGateOut14','MeanGateOut15']
-sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10','MeanGateDiff11','MeanGateDiff12','MeanGateDiff13','MeanGateDiff14','MeanGateDiff15']
+sMeanGateIn=['MeanGateIn00','MeanGateIn01','MeanGateIn02','MeanGateIn03','MeanGateIn04','MeanGateIn05','MeanGateIn06','MeanGateIn07','MeanGateIn08','MeanGateIn09','MeanGateIn10']
+sMeanGateOut=['MeanGateOut00','MeanGateOut01','MeanGateOut02','MeanGateOut03','MeanGateOut04','MeanGateOut05','MeanGateOut06','MeanGateOut07','MeanGateOut08','MeanGateOut09','MeanGateOut10']
+sMeanGateDiff=['MeanGateDiff00','MeanGateDiff01','MeanGateDiff02','MeanGateDiff03','MeanGateDiff04','MeanGateDiff05','MeanGateDiff06','MeanGateDiff07','MeanGateDiff08','MeanGateDiff09','MeanGateDiff10']
 YLABEL={'Mua':'$\mu_a$ (cm$^{-1}$)','Mus':'$\mu_s\prime$ (cm$^{-1}$)'}
 XLABEL='time (s)'
 COMP_LIST=['HHb','O2Hb','tHb','SO2','Lipid','H2O','Coll','Tot']
@@ -39,7 +43,8 @@ LAMBDA1=700
 LAMBDA2=900
 LAMBDA_DEPTH=820 # wavelength where the depth is calculated
 MUS0_DEPTH=10 # (cm-1) pivot scattering for the empirical formula on Zmax (depth)
-
+BKG_F=2580
+BKG_L=2615
 
 # PARAMETERS
 PATHBETA='C:\\OneDrivePolimi\\OneDrive - Politecnico di Milano\\Beta\\'
@@ -53,22 +58,18 @@ FILEKEYSUBJECT='keySubject.txt'
 FILESPECTRA='FileSpectraAll.txt'
 FileComponents='Components0.txt'
 FILECOMPOUT='CompOut.txt'
-PROT10=1
-PROT5=2
-sProt=['Prot10','Prot05']
-PROT10_PERIOD=10
-PROT10_BASE=10
-PROT5_PERIOD=5
-NUMGATE=16
+PROT05=1
+PROT10=2
+NUM_REPLICA_DTOF=2 #number of repeated measurements for each position
+NUMGATE=11
 WIDTHGATE=500 # ps
 MINREF=100 # used to avoid divide by zero (could be set higher)
-ACQDTOF=20 # number of acquisitions in the DTOF
 InClock=[]
 OutClock=[]
-InClock.insert(PROT10,range(2,5))
-InClock.insert(PROT5,range(3,10))
-OutClock.insert(PROT10,range(7,10))
-OutClock.insert(PROT5,range(13,20))
+InClock.insert(PROT05,range(2,5))
+InClock.insert(PROT10,range(3,10))
+OutClock.insert(PROT05,range(7,10))
+OutClock.insert(PROT10,range(13,20))
 
 # EMPIRICAL FORMULA FOR DEPTH: Zmax=2*a*t^b (n_int=1.4, n_ext=1) NOTE:2* because formula is for Zmax
 aDepth=0.1511
@@ -80,10 +81,6 @@ GAIN=4
 HEADLEN=764
 SUBLEN=204
 ch2ps=50000/GAIN/NUMCHAN
-# if Prot==1, InClock=3:5; else InClock=4:10; end
-# if Prot==1, OutClock=8:10; else OutClock=14:20; end
-# if strcmp(System,'HYBD'), BkgCh1=330; else BkgCh1=500; end
-# if strcmp(System,'HYBD'), BkgCh2=700; else BkgCh2=800; end
 
 # FONT SIZE FOR PLOTS
 if PRODUCTION:
@@ -104,7 +101,7 @@ if PRODUCTION:
 else: 
     FIGWIDTH = 50
 
-if FIG_PW2021:
+if FIG_PW2021 or FIG_PAPER:
     style.use(['science','no-latex'])
     FIGWIDTH = 35
     SMALL_SIZE = 12
@@ -118,7 +115,17 @@ if FIG_PW2021:
     matplotlib.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
     matplotlib.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-
+# NAMING FILE
+if Prot==1:
+    sProt='Prot05s'
+else:
+    sProt='Prot10s'
+if REFOLDING==True:
+    sRefold='ReTrue'
+else:
+    sRefold='ReFals'
+sProtRef=sProt+'_'+sRefold
+    
 
 # CONVERSION FUNCTION
 def cm2inch(*tupl):
@@ -144,19 +151,8 @@ for ig in arange(NUMGATE):
     Data['DeltaGateNorm'+str(ig).zfill(2)]=0
 # DELETE???
     
-# # CREATES COL-FIELDS FOR MEAN GATES
-# sMeanGateIn=[]
-# sMeanGateOut=[]
-# sMeanGateDiff=[]
-
-# for ig in arange(NUMGATE):
-#     sMeanGateIn.append(['MeanGateIn'+str(ig)])
-#     sMeanGateOut.append(['MeanGateOut'+str(ig)])
-#     sMeanGateDiff.append(['MeanGateDiff'+str(ig)])
-# sMeanGateIn=tuple(sMeanGateIn)
-
 # LOAD RAW DATA AND PROCESS THEM TO POPULATE DataFrame
-sumDtof=zeros([len(Data.Subject.unique()),NUMCHAN])
+meanDtof=zeros([len(Data.Subject.unique()),NUMCHAN])
 for od in Data.Data.unique():
     item=Data[Data.Data==od].iloc[0,:]
     
@@ -180,22 +176,17 @@ for od in Data.Data.unique():
         for ik in arange(item.NumClock):
             fid.seek(SUBLEN,1) # 1=current
             Dtof[ir,ik,:]=fromfile(fid,dtype=uint16,count=NUMCHAN)
+            if BKG: Dtof[ir,ik,:]=Dtof[ir,ik,:]-mean(Dtof[ir,ik,BKG_F:BKG_L])
             
     # Calc peak
     Chan0=Syst.tolist().index(max(Syst))
     mtime=(arange(NUMCHAN)-Chan0)*ch2ps
     
     # Collect DTOF for Figure
-    if (item.Protocol==PROT10)&(item.Position=='UR')&(item.Detector=='HYBD'):
+    if (item.Protocol==PROT05)&(item.Position=='UR')&(item.Repetition=='a')&(item.Detector=='HYBD'):
         iSubject=Data.Subject.unique().tolist().index(item.Subject)
-        sumDtof[iSubject,:]+=sum(Dtof[1,:,:],axis=0)
-    
-
-# % calculate
-# DataIn=squeeze(mean(mean(Data(FirstRep:end,InClock,:),2),1));
-# DataOut=squeeze(mean(mean(Data(FirstRep:end,OutClock,:),2),1));
-# DataClock=squeeze(mean(Data(FirstRep:end,:,:),1));
-
+        meanDtof[iSubject,:]=+sum(Dtof[0,:,:],axis=0)/(item.NumRep)
+        
     # Calc gate
     StopGate=(Chan0+arange(NUMGATE)*(WIDTHGATE/ch2ps)).astype(int)
     StartGate=StopGate[arange(NUMGATE)-1]+1 # stop ends exacly before the start
@@ -285,38 +276,19 @@ if PLOT_TYPE3:
     subject=pData.Subject.unique()
     np=len(position)
     ns=len(subject)
-    # figOpt=figure(num='FigOpt',figsize=cm2inch(0.5*FIGWIDTH,FIGWIDTH))
     figOpt=figure(num='FigOpt',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figGate=figure(num='FigGate',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
     figMean=figure(num='FigMean',figsize=cm2inch(FIGWIDTH,0.4*FIGWIDTH))
-    # gsOpt=figOpt.add_gridspec(ns,np, hspace=0, wspace=0.5)
     gsOpt=figOpt.add_gridspec(np,ns, hspace=0, wspace=0.5)
     gsGate=figGate.add_gridspec(np,ns, hspace=0, wspace=0.3)
     gsMean=figMean.add_gridspec(np,ns, hspace=0, wspace=0.3)
     axsOpt=gsOpt.subplots(sharex=True)
     axsGate=gsGate.subplots(sharex=True)
     axsMean=gsMean.subplots(sharex=True)
-    # axsMean=gsMean.subplots(sharex=True,sharey=True)
     
     for ip,op in enumerate(position):
         for iss,os in enumerate(subject):
             
-            # # plot Opt
-            # sca(axsOpt[iss,ip])
-            # for io,oo in enumerate(Opt):
-            #     table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Opt,index='RefTime',aggfunc='mean')
-            #     #table[oo].plot(ax=axsOpt[ip,iss],secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
-            #     table[oo].plot(secondary_y=(oo=='Mus'),style=Linestyle,color=Color[io])
-            #     if ((oo=='Mua')&(ip==0)): ylabel(YLABEL[oo],color=Color[io])
-            #     if ((oo=='Mus')&(ip==(np-1))): ylabel(YLABEL[oo],color=Color[io])
-            #     tick_params(axis="y",labelcolor=Color[io])
-            #     #gca().yaxis.set_major_locator(MaxNLocator(3))
-            #     #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-            #     #gca().yaxis.set_major_locator(MultipleLocator(0.1))
-            # if iss==(ns-1): xlabel(XLABEL)
-            # if iss==0: title('pos='+op+' - subj='+os)
-            # grid(True)
-
             # plot Opt
             sca(axsOpt[ip,iss])
             for io,oo in enumerate(Opt):
@@ -329,23 +301,17 @@ if PLOT_TYPE3:
                     if ((iss==(ns-1))&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
                     if ((iss==(ns-1))&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
                     axvline(VERT_LINE,color='gray',linewidth=2)
-                    #gca().text(3, 8, 'boxed italics text in data coords', style='italic',
-                    # bbox={'facecolor': 'red', 'alpha': 0.5, 'pad': 10})
-                    #text(0.5,0,'blah',rotation=90)
                 else:
                     gca().yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
                     if ((iss==0)&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
                     if ((iss==0)&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
-                        #gca().yaxis.set_major_locator(MaxNLocator(3))
-                #gca().yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-                #gca().yaxis.set_major_locator(MultipleLocator(0.1))
             grid(True)
-            if FIG_PW2021:
+            if (FIG_PW2021 or FIG_PAPER):
                 if ip==(np-1): axsOpt[ip,iss].set_xlabel('time (s)')
                 axsOpt[ip,iss].set_xlabel('time (s)')
                 if ip==0: title('subject #'+str(iss+1))
             else:
-                figOpt.suptitle("OPTICAL PROPERTIES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+                figOpt.suptitle("OPTICAL PROPERTIES - Prot = "+sProtRef, fontsize=16)
                 if iss==(ns-1): xlabel(XLABEL)
                 if iss==0: title('pos='+op+' - subj='+os)
                 if ((oo=='Mua')&(iss==0)): ylabel(YLABEL[oo],color=Color[io])
@@ -356,9 +322,9 @@ if PLOT_TYPE3:
             table=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(Gates,index='RefTime',aggfunc='mean')
             table.plot(ax=axsGate[ip,iss],legend=False)
             grid(True)
-            if FIG_PW2021:
+            if (FIG_PW2021 or FIG_PAPER):
                 if ip==(np-1): xlabel('time (s)')
-                if((ip==(np-1))and(iss==0)):
+                if((ip==0)and(iss==3)):
                     legend(['0.5 ns','1.5 ns','2.5 ns','3.5 ns','4.5 ns'])
                 else:
                     axvline(VERT_LINE,color='gray',linewidth=2)
@@ -369,7 +335,7 @@ if PLOT_TYPE3:
                 xlabel(XLABEL)
                 ylabel('log ratio to REF')
                 title('pos='+op+' - subj='+os)
-                figGate.suptitle("NORMALISED GATES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+                figGate.suptitle("NORMALISED GATES - Prot = "+sProtRef, fontsize=16)
 
             # plot Mean
             sca(axsMean[ip,iss])
@@ -378,16 +344,14 @@ if PLOT_TYPE3:
             temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateOut,index='Detector',aggfunc='mean')
             mgOut=temp.to_numpy().transpose()
             temp=pData[(pData.Position==op)&(pData.Subject==os)].pivot_table(sMeanGateDiff,index='Detector',aggfunc='mean')
-            # mgDiff=temp.to_numpy().transpose()
-            # mgDiff=mgOut-mgIn
             mgDiff=mgIn-mgOut
-            # A=column_stack(mgIn,mgOut,mgDiff)
             plot(TimeGate,mgIn,label='IN')
             plot(TimeGate,mgOut,label='OUT')
             plot(TimeGate,mgDiff,label='IN-OUT')
-            legend()
+            #legend()
             grid(True)
-            if FIG_PW2021:
+            if (FIG_PW2021 or FIG_PAPER):
+                if((ip==1)and(iss==2)): legend()
                 if ip==0: title('subject #'+str(iss+1))
                 if ip==(np-1): xlabel('time gate (ps)')
                 if iss==0 and ip==0: ylabel('Position1 - contrast')
@@ -397,38 +361,34 @@ if PLOT_TYPE3:
                 xlabel('time gate (ps)')
                 ylabel('log ratio to REF')
                 title('pos='+op+' - subj='+os)
-                figMean.suptitle("MEAN GATES OVER PHASES - Prot = "+sProt[Prot-1]+", Folding = "+str(REFOLDING), fontsize=16)
+                figMean.suptitle("MEAN GATES OVER PHASES - Prot = "+sProtRef, fontsize=16)
                 
     figOpt.tight_layout()
     figGate.tight_layout()
     figMean.tight_layout()
     if SAVEFIG:
-        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.eps',format='eps')
-        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.eps',format='eps')
-        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.eps',format='eps')
-    if FIG_PW2021:
-        # pdf=PdfPages('FigMean.pdf')
-        # pdf.savefig(figMean)
-        # pdf.close()
-        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt.jpg',format='jpg')
-        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate.jpg',format='jpg')
-        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean.jpg',format='jpg')
-
-
+        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt'+sProtRef+'.eps',format='eps')
+        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate'+sProtRef+'.eps',format='eps')
+        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean'+sProtRef+'.eps',format='eps')
+    if (FIG_PW2021 or FIG_PAPER):
+        figOpt.savefig(PATHBETA+PATHANALYSIS+'FigOpt'+sProtRef+'.jpg',format='jpg')
+        figGate.savefig(PATHBETA+PATHANALYSIS+'FigGate'+sProtRef+'.jpg',format='jpg')
+        figMean.savefig(PATHBETA+PATHANALYSIS+'FigMean'+sProtRef+'.jpg',format='jpg')
 
 # plot DTOF
 if PLOT_DTOF:
     figDtof=figure(num='FigDtof',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
-    sumDtof=sumDtof.transpose()/ACQDTOF
-    semilogy(mtime,sumDtof)
+    meanDtof=meanDtof.transpose()
+    semilogy(mtime,meanDtof)
     legend(Data.Subject.unique())
     xlabel('time (ps)')
-    ylabel('counts')
-    xlim([0,8000])
+    ylabel('mean counts/s')
+    xlim([0,MAX_TIME])
     grid(True)
+    legend([r'#1 $\rho=7$ cm',r'#2 $\rho=7$ cm',r'#3 $\rho=7$ cm',r'#4 $\rho=7$ cm',r'#5 $\rho=9$ cm'])
     if SAVEFIG:
         figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
-    if FIG_PW2021:
+    if (FIG_PW2021 or FIG_PAPER):
         figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.jpg',format='jpg')
 
 # plot SPECTRA
@@ -468,32 +428,32 @@ if PLOT_SPECTRA:
     figSpectra.tight_layout()
     if SAVEFIG:
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.eps',format='eps')
-    if FIG_PW2021:
+    if (FIG_PW2021 or FIG_PAPER):
         figSpectra.savefig(PATHBETA+PATHANALYSIS+'FigSpectra.jpg',format='jpg')
 
 # plot DEPTH (see on top parameters)
 if PLOT_DEPTH:
-    intDtof=zeros(shape(sumDtof))
+    intDtof=zeros(shape(meanDtof))
     figIntDtof=figure(num='FigIntDtof',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
     for ic in arange(NUMCHAN):
-        intDtof[ic,:]=sum(sumDtof[ic:,:],axis=0)
+        intDtof[ic,:]=sum(meanDtof[ic:,:],axis=0)
     semilogy(mtime,intDtof)
     legend(Data.Subject.unique())
     xlabel('time (ps)')
     ylabel('counts')
-    xlim([0,8000])
+    xlim([0,MAX_TIME])
     grid()
     
-    maxTimeChan=argmin((intDtof>10000),axis=0)
+    maxTimeChan=argmin((intDtof>MIN_COUNT_RATE),axis=0)
     maxTimeTime=mtime[maxTimeChan]
 
     table=pSpectra.pivot_table(values=Opt,index='Lambda',columns='Subject',aggfunc='mean')
     MusDepth=table['Mus'].loc[LAMBDA_DEPTH]
     MuaDepth=table['Mua'].loc[LAMBDA_DEPTH]
-    Zmax=zeros(shape(sumDtof))
+    Zmax=zeros(shape(meanDtof))
     for iss,oss in enumerate(Data.Subject.unique()):
         Zmax[:,iss]=2*aDepth*(mtime*MUS0_DEPTH/MusDepth[oss])**bDepth
-    # Zmax=zeros(shape(sumDtof))
+    # Zmax=zeros(shape(meanDtof))
     # for iss,oss in enumerate(Data.Subject.unique()):
     #     Zmax[:,iss]=2*aDepth*(mtime)**bDepth
     figZmax=figure(num='FigZmax',figsize=cm2inch(0.4*FIGWIDTH,0.4*FIGWIDTH))
@@ -517,25 +477,15 @@ if PLOT_DEPTH:
     legend(Data.Subject.unique())
     xlabel('time (ps)')
     ylabel('Zmax (mm)')
-    xlim([0,8000])
+    xlim([0,MAX_TIME])
     ylim([0,60])
     grid()
 
     if SAVEFIG:
         figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.eps',format='eps')
-    if FIG_PW2021:
+    if (FIG_PW2021 or FIG_PAPER):
         figZmax.savefig(PATHBETA+PATHANALYSIS+'FigZmax.jpg',format='jpg')
-    
-        
-# show()
-    # grid(True)
-    # if SAVEFIG:
-    #     figDtof.savefig(PATHBETA+PATHANALYSIS+'FigDTOF.eps',format='eps')
-
-
-
-
-
+           
 
 #%% CALC COMPONENTS
 Components=read_table(PATHBETA+PATHANALYSIS+FileComponents)
@@ -568,8 +518,4 @@ figure(num='FigConc')
 plot(x,y)
 #filtData=merge(filtData,dfComp,on=['Subject','Meas','Rho'])
 
-
 show()
-
-
-
