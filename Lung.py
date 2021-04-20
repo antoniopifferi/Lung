@@ -21,7 +21,7 @@ if Prot==1: VERT_LINE=5
 if Prot==2: VERT_LINE=10
 MIN_COUNT_RATE=10000 # minimum number of photons for late gate (1s acquisition)
 MAX_TIME=8000 # ps time scale
-REFOLDING=True
+REFOLDING=False
 SAVEFIG=False
 PLOT_TYPE1=False # only Mua
 PLOT_TYPE2=False # only Mua folding average
@@ -200,7 +200,7 @@ for od in Data.Data.unique():
         Ref=mean(Gate[ir,:,:],axis=0) # nore: Gate here is 2D since ir reduce dimensions
         Ref[Ref<MINREF]=0
         for ik in arange(item.NumClock):
-            DeltaGateNorm[ir,ik,:]=nan_to_num((Gate[ir,ik,:]-Ref)/Ref)
+            DeltaGateNorm[ir,ik,:]=nan_to_num((Gate[ir,ik,:]-Ref)/Ref,nan=0.0, posinf=0.0, neginf=0.0)
             # DeltaGateNorm[ir,ik,:]=nan_to_num(-log(Gate[ir,ik,:]/Ref))
     for ig in arange(NUMGATE):    
         Data.loc[Data.Data==od,'DeltaGateNorm'+str(ig).zfill(2)]=DeltaGateNorm[:,:,ig].flatten()    
@@ -298,13 +298,13 @@ if PLOT_TYPE3:
                 tick_params(axis="y",labelcolor=Color[io])
                 if oo=='Mus':
                     gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-                    if ((iss==(ns-1))&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
-                    if ((iss==(ns-1))&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
+                    if ((iss==(ns-1))&(ip==0)): ylabel('UR - '+YLABEL[oo],color=Color[io])
+                    if ((iss==(ns-1))&(ip==(np-1))): ylabel('DR - '+YLABEL[oo],color=Color[io])
                     axvline(VERT_LINE,color='gray',linewidth=2)
                 else:
                     gca().yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-                    if ((iss==0)&(ip==0)): ylabel('Position1 - '+YLABEL[oo],color=Color[io])
-                    if ((iss==0)&(ip==(np-1))): ylabel('Position2 - '+YLABEL[oo],color=Color[io])
+                    if ((iss==0)&(ip==0)): ylabel('UR - '+YLABEL[oo],color=Color[io])
+                    if ((iss==0)&(ip==(np-1))): ylabel('DR - '+YLABEL[oo],color=Color[io])
             grid(True)
             if (FIG_PW2021 or FIG_PAPER):
                 if ip==(np-1): axsOpt[ip,iss].set_xlabel('time (s)')
@@ -324,13 +324,13 @@ if PLOT_TYPE3:
             grid(True)
             if (FIG_PW2021 or FIG_PAPER):
                 if ip==(np-1): xlabel('time (s)')
-                if((ip==0)and(iss==3)):
+                if(((Prot==1)and(ip==1)and(iss==1))or((Prot==2)and(ip==1)and(iss==4))):
                     legend(['0.5 ns','1.5 ns','2.5 ns','3.5 ns','4.5 ns'])
                 else:
                     axvline(VERT_LINE,color='gray',linewidth=2)
                 if ip==0: title('subject #'+str(iss+1))
-                if iss==0 and ip==0: ylabel('Position1 - contrast')
-                if iss==0 and ip==(np-1): ylabel('Position2 - contrast')
+                if iss==0 and ip==0: ylabel('UR - contrast')
+                if iss==0 and ip==(np-1): ylabel('DR - contrast')
             else:
                 xlabel(XLABEL)
                 ylabel('log ratio to REF')
@@ -354,8 +354,8 @@ if PLOT_TYPE3:
                 if((ip==1)and(iss==2)): legend()
                 if ip==0: title('subject #'+str(iss+1))
                 if ip==(np-1): xlabel('time gate (ps)')
-                if iss==0 and ip==0: ylabel('Position1 - contrast')
-                if iss==0 and ip==(np-1): ylabel('Position2 - contrast')
+                if iss==0 and ip==0: ylabel('UR - contrast')
+                if iss==0 and ip==(np-1): ylabel('DR - contrast')
                 # axsMean[ip,iss].yaxis.set_major_formatter(ticker.PercentFormatter())
             else:
                 xlabel('time gate (ps)')
